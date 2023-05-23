@@ -1,0 +1,203 @@
+## Monitoring the following: Process creation (execve), passwd/shadow/sshd modifications, webserver modifications, socket bind, socket connect
+## Detection of any process being created, critical system files modified and uses network auditing for improved shell/reverse shell/lateral movement visibility
+
+# Remove any existing rules
+-D
+
+# Set buffer and ignore errors
+-b 8192
+-f 1
+-e 1
+-i
+ 
+# Files to be monitored
+-w /etc/pam.conf -p wa -k pam-config
+-w /etc/pam.d/ -p wa -k pam-config
+-w /etc/ssh/sshd_config -p wa -k ssh-config
+
+# Watch Executables that are whitelisted
+-w /bin/bash -p wa -k privileged-exe
+-w /usr/lib/systemd/systemd -p wa -k privileged-exe
+-w /opt/splunkforwarder/bin/splunkd -p wa -k privileged-exe
+-w /usr/lib/systemd/systemd-logind -p wa -k privileged-exe
+-w /usr/bin/nice -p wa -k privileged-exe
+-w /usr/bin/ionice -p wa -k privileged-exe
+
+# Modifications to audit configuration that occur while the audit collection functions are operating
+-w /etc/audit/ -p wa -k audit-config
+-w /etc/libaudit.conf -p wa -k audit-config
+-w /etc/audisp/ -p wa -k audit-spconfig
+  
+# Monitor for use of audit management tools
+-w /sbin/auditctl -p x -k audit-tools
+-w /sbin/auditd -p x -k audit-tools
+
+# Exclude SplunkForwarder
+-a exit,never -F arch=b32 -S open -F dir=/opt/splunkforwarder/ -F auid=4294967295 -F uid=splunk -F exe=/opt/splunkforwarder/bin/splunkd
+-a exit,never -F arch=b64 -S open -F dir=/opt/splunkforwarder/ -F auid=4294967295 -F uid=splunk -F exe=/opt/splunkforwarder/bin/splunkd
+-a exit,never -F arch=b32 -S connect -F auid=4294967295 -F uid=splunk -F exe=/opt/splunkforwarder/bin/splunkd
+-a exit,never -F arch=b64 -S connect -F auid=4294967295 -F uid=splunk -F exe=/opt/splunkforwarder/bin/splunkd
+
+# Exclude system relevant actions or stuff not needed
+-a exit,never -F arch=b32 -S execve -F uid=root -F auid=4294967295 -F exe=/usr/bin/nice
+-a exit,never -F arch=b64 -S execve -F uid=root -F auid=4294967295 -F exe=/usr/bin/nice
+-a exit,never -F arch=b32 -S execve -F uid=root -F auid=4294967295 -F exe=/usr/bin/ionice
+-a exit,never -F arch=b64 -S execve -F uid=root -F auid=4294967295 -F exe=/usr/bin/ionice
+-a exit,never -F arch=b32 -S 11
+-a exit,never -F arch=b64 -S 11
+-a always,exclude -F msgtype=USER_START
+-a always,exclude -F msgtype=USER_END
+-a always,exclude -F msgtype=USER_ACCT
+-a always,exclude -F msgtype=PROCTITLE
+-a always,exclude -F msgtype=CRED_DISP
+-a always,exclude -F msgtype=CRYPTO_SESSION
+-a always,exclude -F msgtype=CRED_REFR
+-a always,exclude -F msgtype=CRED_ACQ
+-a always,exclude -F msgtype=CRYPTO_KEY_USER
+-a always,exclude -F msgtype=BPRM_FCAPS
+
+#SuccessFactors Custom Filter
+-a exit,never -F arch=b32 -S execve -S open -F uid=zabbix
+-a exit,never -F arch=b64 -S execve -S open -F uid=zabbix
+-a exit,never -F arch=b32 -S execve -S open -S chown -S chmod -F uid=deployer
+-a exit,never -F arch=b64 -S execve -S open -S chown -S chmod -F uid=deployer
+-a exit,never -F arch=b32 -S execve -S open -S chown -S chmod -F auid=deployer
+-a exit,never -F arch=b64 -S execve -S open -S chown -S chmod -F auid=deployer
+
+# Log Executed Commands
+-a always,exit -F arch=b32 -S chown -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b64 -S chown -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b32 -S fchown -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b64 -S fchown -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b32 -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b64 -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b32 -S fchownat -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b64 -S fchownat -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b32 -S chmod -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b64 -S chmod -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b32 -S fchmod -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b64 -S fchmod -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b32 -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b64 -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b32 -S setxattr -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b64 -S setxattr -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b32 -S fsetxattr -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b64 -S fsetxattr -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b32 -S lsetxattr -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b64 -S lsetxattr -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b32 -S removexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b64 -S removexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b32 -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b64 -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b32 -S lremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b64 -S lremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod
+-a always,exit -F arch=b32 -S creat -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access
+-a always,exit -F arch=b64 -S creat -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access
+-a always,exit -F arch=b32 -S open -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access
+-a always,exit -F arch=b64 -S open -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access
+-a always,exit -F arch=b32 -S openat -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access
+-a always,exit -F arch=b64 -S openat -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access
+-a always,exit -F arch=b32 -S open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access
+-a always,exit -F arch=b64 -S open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access
+-a always,exit -F arch=b32 -S truncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access
+-a always,exit -F arch=b64 -S truncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access
+-a always,exit -F arch=b32 -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access
+-a always,exit -F arch=b64 -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access
+-a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change
+-a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time-change
+-a always,exit -F arch=b64 -S clock_settime -k time-change
+-a always,exit -F arch=b32 -S clock_settime -k time-change
+-a always,exit -F path=/usr/bin/chcon -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-priv_change
+-a always,exit -F path=/usr/bin/passwd  -F perm=x -F auid>=1000 -F auid!=4294967295  -k  privileged-passwd
+-a always,exit -F path=/sbin/unix_chkpwd -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-passwd
+-a always,exit -F path=/usr/bin/gpasswd -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-passwd
+-a always,exit -F path=/usr/bin/chage -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-passwd
+-a always,exit -F path=/usr/bin/su -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-priv_change
+-a always,exit -F path=/usr/bin/sudo -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-priv_change
+-a always,exit -F path=/usr/bin/newgrp -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-priv_change
+-a always,exit -F path=/usr/bin/chsh -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-priv_change
+-a always,exit -F path=/usr/bin/sudoedit -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-priv_change
+-a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -k privileged-mount
+-a always,exit -F arch=b32 -F path=/bin/mount -F auid>=1000 -F auid!=4294967295 -k privileged-mount
+-a always,exit -F arch=b32 -F path=/usr/bin/mount -F auid>=1000 -F auid!=4294967295 -k privileged-mount
+-a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=4294967295 -k privileged-mount
+-a always,exit -F arch=b64 -F path=/bin/mount -F auid>=1000 -F auid!=4294967295 -k privileged-mount
+-a always,exit -F arch=b64 -F path=/usr/bin/mount -F auid>=1000 -F auid!=4294967295 -k privileged-mount
+-a always,exit -F path=/bin/umount -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-mount
+-a always,exit -F path=/usr/sbin/postdrop -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-postfix
+-a always,exit -F path=/usr/sbin/postqueue -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-postfix
+-a always,exit -F path=/usr/bin/crontab -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-cron
+-a always,exit -F path=/sbin/pam_timestamp_check -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-pam
+-a always,exit -F arch=b32 -S init_module -k module-change
+-a always,exit -F arch=b64 -S init_module -k module-change
+-a always,exit -F arch=b32 -S delete_module -k module-change
+-a always,exit -F arch=b64 -S delete_module -k module-change
+-a always,exit -F arch=b32 -S rename -F perm=x -F auid>=1000 -F auid!=4294967295 -k delete
+-a always,exit -F arch=b64 -S rename -F perm=x -F auid>=1000 -F auid!=4294967295 -k delete
+-a always,exit -F arch=b32 -S renameat -F perm=x -F auid>=1000 -F auid!=4294967295 -k delete
+-a always,exit -F arch=b64 -S renameat -F perm=x -F auid>=1000 -F auid!=4294967295 -k delete
+-a always,exit -F arch=b32 -S rmdir -F perm=x -F auid>=1000 -F auid!=4294967295 -k delete
+-a always,exit -F arch=b64 -S rmdir -F perm=x -F auid>=1000 -F auid!=4294967295 -k delete
+-a always,exit -F arch=b32 -S unlink -F perm=x -F auid>=1000 -F auid!=4294967295 -k delete
+-a always,exit -F arch=b64 -S unlink -F perm=x -F auid>=1000 -F auid!=4294967295 -k delete
+-a always,exit -F arch=b32 -S unlinkat -F perm=x -F auid>=1000 -F auid!=4294967295 -k delete
+-a always,exit -F arch=b64 -S unlinkat -F perm=x -F auid>=1000 -F auid!=4294967295 -k delete
+-a always,exit -F arch=b32 -S create_module -k module-change
+-a always,exit -F arch=b64 -S create_module -k module-change
+-a always,exit -F arch=b32 -S finit_module -k module-change
+-a always,exit -F arch=b64 -S finit_module -k module-change
+-w /etc/selinux/ -p wa -k MAC-policy
+-w /var/log/tallylog -p wa -k logins
+-w /var/log/faillog -p wa -k logins
+-w /var/run/faillock -p wa -k logins
+-w /var/log/lastlog -p wa -k logins
+-w /var/run/utmp -p wa -k session
+-w /var/log/wtmp -p wa -k logins
+-w /var/log/btmp -p wa -k logins
+-w /etc/issue -p wa -k system-locale
+-w /etc/issue.net -p wa -k system-locale
+-w /etc/hosts -p wa -k system-locale
+-w /etc/sysconfig/network/ -p wa -k system-locale
+-w /etc/sudoers -p wa -k privileged-actions
+-w /etc/sudoers.d/ -p wa -k privileged-actions
+-w /var/log/sudosh/ -p wa -k privileged-actions
+-w /sbin/insmod -p x -F auid!=4294967295 -k module-change
+-w /sbin/rmmod -p x -F auid!=4294967295 -k module-change
+-w /sbin/modprobe -p x -F auid!=4294967295 -k module-change
+-w /etc/localtime -p wa -k time-change
+-w /etc/passwd -p wa -k identity
+-w /etc/group -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/security/opasswd -p wa -k identity
+-a always,exit -F path=/usr/bin/wall -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-priv_change
+-a always,exit -F path=/usr/bin/fusermount -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-priv_change
+-a always,exit -F path=/usr/bin/umount -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-priv_change
+-a always,exit -F path=/usr/bin/write -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-priv_change
+-a always,exit -F path=/usr/bin/chfn -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-priv_change
+-a always,exit -F path=/usr/bin/pkexec -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-priv_change
+-a always,exit -F path=/usr/bin/at -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-priv_change
+-a always,exit -F path=/usr/bin/ssh-agent -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-priv_change
+-a always,exit -F path=/sbin/pam_timestamp_check -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-priv_change
+-a always,exit -F path=/usr/lib/polkit-1/polkit-agent-helper-1 -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-priv_change
+-a always,exit -F path=/usr/lib/utempter/utempter -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-priv_change
+-a always,exit -F path=/lib/dbus-1/dbus-daemon-launch-helper -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-priv_change
+-a always,exit -F path=/usr/lib/ssh/ssh-keysign -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-priv_change
+
+# Webserver Directories, you NEED TO modify this if necessary (add paths to webservers htdocs)
+-a exit,never -F arch=b32 -S 5,82,83,84,86,87,88,133,258,263,264,265,266,316
+-a exit,never -F arch=b64 -S 5,82,83,84,86,87,88,133,258,263,264,265,266,316
+# nginx server
+#-w /web/nginx-openresty/nginx/htdocs -p w -k app-nginx -F a1&0100 -F success=1 -F auid=4294967295 -F uid<1005
+#-w /web/nginx-openresty/nginx/conf -p w -k app-nginx-conf -F a1&0100 -F success=1 -F auid=4294967295 -F uid<1005
+# james server
+#-w /app/james-2.3.2/conf/ -p w -k app-james-conf -F a1&0100 -F success=1 -F auid=4294967295 -F uid<1005
+#-w /app/james-2.3.2/bin/ -p w -k app-james-bin -F a1&0100 -F success=1 -F auid=4294967295 -F uid<1005
+# all base on tomcat server
+#-w /app/tomcat/conf/ -p w -k app-tomcat-conf -F a1&0100 -F success=1 -F auid=4294967295 -F uid<1005
+#-w /app/tomcat/sf_conf/ -p w -k app-tomcat-conf -F a1&0100 -F success=1 -F auid=4294967295 -F uid<1005
+#-w /app/tomcat/lib/ -p w -k app-tomcat-lib -F a1&0100 -F success=1 -F auid=4294967295 -F uid<1005
+#-w /app/tomcat/sf_lib/ -p w -k app-tomcat-lib -F a1&0100 -F success=1 -F auid=4294967295 -F uid<1005
+#-w /app/tomcat/sf_saml1_lib/ -p w -k app-tomcat-lib -F a1&0100 -F success=1 -F auid=4294967295 -F uid<1005
+#-w /app/tomcat/sf_saml2_lib/ -p w -k app-tomcat-lib -F a1&0100 -F success=1 -F auid=4294967295 -F uid<1005
+#-w /app/tomcat/additional_lib/ -p w -k app-tomcat-lib -F a1&0100 -F success=1 -F auid=4294967295 -F uid<1005
+#-w /app/tomcat/bin/ -p w -k app-tomcat-bin -F a1&0100 -F success=1 -F auid=4294967295 -F uid<1005
