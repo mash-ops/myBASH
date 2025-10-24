@@ -152,6 +152,7 @@ number_to_char=([0]=$zero [1]=$one [2]=$two [3]=$three [4]=$four [5]=$five
 
 declare -A ampm_to_char=([A]="$a" [M]="$m" [P]="$p")
 
+OS_NAME=$(uname -s)
 #------function
 cleanup() {
     printf "\n\n\n"
@@ -193,10 +194,16 @@ printf "\033]0;%s :: %s\007" "$(date)" "Digital Clock - Manjesh"
 tput cup 1 15
 printf "[ Digital Clock using system time : brought to you by Manjesh ]"
 
+if [[ "${OS_NAME}" == "Darwin" ]]; then
+   TIMEOUT=1
+else
+   TIMEOUT=0.5
+fi
+
 #------Main section for the digital clock
 while [ true ];
 do
-  read -n 1 -s -t 0.5 input #if 0.5 doesn't work change to 1
+  read -n 1 -s -t ${TIMEOUT} input
   if [[ -n "$input" ]]; then
      printf "\n\n\n\n"
      echo "   Bye👋, Have a wonderful time..."
@@ -230,9 +237,30 @@ do
          ((ind++)) ; ((col+=8))
        fi
   done
-      am_pm=$(date +'%p')
-      index=0; ((col+=2))
-      while [ "${index}" -lt "${#am_pm}" ]; do
+      if [[ "${OS_NAME}" == "Darwin" ]]; then
+          index=0 
+	       ((col+=2))
+	       am_pm=$(date +'%p')
+	     while [ "${index}" -lt "${#am_pm}" ]; do
+       		 substrg=${am_pm:$index:1}  
+       		  if [[ "${substrg}" == "A" ]]; then
+       		    IFS=$'\n' read -r -d '' -a digital_ampm_lines <<< "${a}"
+       		 elif [[ "${substrg}" == "M" ]]; then
+       		    IFS=$'\n' read -r -d '' -a digital_ampm_lines <<< "${m}"
+       		 elif [[ "${substrg}" == "P" ]]; then
+       		    IFS=$'\n' read -r -d '' -a digital_ampm_lines <<< "${p}"
+       		 fi
+       		 ro=6; 
+       		 for ampm_line in "${digital_ampm_lines[@]}"; do
+       		     printf "\e[${ro};${col}H%s" "${ampm_line}"
+       		       ((ro++))
+       		 done
+		     ((index++)) ; ((col+=8))
+	      done #am_pm
+     else
+      	am_pm=$(date +'%p')
+      	index=0; ((col+=2))
+      	while [ "${index}" -lt "${#am_pm}" ]; do
             substrg=${am_pm:$index:1}
             IFS=$'\n' read -r -d '' -a digital_ampm_lines <<< "${ampm_to_char[$substrg]}"
             ro=6 
@@ -241,5 +269,7 @@ do
                ((ro++))
             done
             ((index++)); ((col+=8))
-      done # am_pm
+      	done # am_pm
+     fi
 done
+
