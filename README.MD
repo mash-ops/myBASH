@@ -18,4 +18,4 @@ EXAMPLE:
 
 ## Rush (parallel jobs)
 Rush : rush -- a cross-platform command-line tool for executing jobs in parallel
-*      https://github.com/shenwei356/rush?tab=readme-ov-file#examples
+* https://github.com/shenwei356/rush?tab=readme-ov-file#examples
