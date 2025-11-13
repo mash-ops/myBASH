@@ -1,4 +1,10 @@
-#BASH
+		 ____    _    ____  _   _ 
+		| __ )  / \  / ___|| | | |
+		|  _ \ / _ \ \___ \| |_| |
+		| |_) / ___ \ ___) |  _  |
+		|____/_/   \_\____/|_| |_|
+          [Bourne-Again SHell]
+
 ## Bash Goodies...
 *	http://mywiki.wooledge.org/BashGuide
 *	https://www.shellcheck.net/
